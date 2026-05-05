@@ -1,40 +1,32 @@
 import axios from 'axios'
-import React, { Children, createContext, useContext, useEffect } from 'react'
-import { useState } from 'react'
+import React, {createContext, useContext} from 'react'
+import useFetchProducts from '../hooks/useFetchProducts'
+import useConfirm from '../hooks/useConfirm'
 
 const ProductContext = createContext()
 
 const ProductProvider = ({children}) => {
 
-    const [products, setProducts] = useState([])
-    const [loading, setLoading] = useState(false)
-    const [editing, setEditing] = useState(null)
-    const [deleteId, setDeleteId] = useState(null)
 
-    useEffect(() => {
-        if (loading) return;
+    const {
+        products,
+        setProducts,
+        loading,
+        error,
+        refetch,
+    } = useFetchProducts()
 
-        const getProduct = async() => {
-            setLoading(true)
 
-            try {
-                const response = await axios.get('https://dummyjson.com/products?limit=10&skip=10&select=id,title,price,description,images')
+    const {
+        pendingId: deleteId,
+        isOpen: confirmOpen,
+        requestConfirm: setDeleteId,
+        cancelConfirm
+    } = useConfirm()
 
-                if (response?.data?.products.length) {
-                    setProducts(response.data.products)
-                }
-            } catch (error) {
-                console.error(error.message);
-            } finally{
-                setLoading(false)
-            }
-        }
-        getProduct()
-    }, [])
 
     const addProduct = async (product) => {
         try {
-            setLoading(true)
 
             const response = await axios.post('https://dummyjson.com/products/add', product)
 
@@ -44,18 +36,15 @@ const ProductProvider = ({children}) => {
                 setProducts((prev) => [...prev, newProduct])
             }
         } catch (error) {
-            console.log(error);
-        } finally{
-            setLoading(false)
+            console.error('AddProduct error', error.message);
         }
     }
 
     const editProduct = async (product) => {
         
         try {
-            setLoading(true)
 
-            const response = await axios.put(`https://dummyjson.com/products/${product.id}`, Product)
+            const response = await axios.put(`https://dummyjson.com/products/${product.id}`, product)
 
             const editedProduct = response.data
 
@@ -63,18 +52,15 @@ const ProductProvider = ({children}) => {
 
             setProducts(mappedProduct)
         } catch (error) {
-            console.log(error);
-        } finally{
-            setLoading(false)
+            console.error('EditProduct error', error.message);
         }
     }
 
     const deleteProduct = async (id) => {
         
         try {
-            setLoading(true)
 
-            const response = await axios.delete(`https://dummyjson.com/products${product.id}`)
+            const response = await axios.delete(`https://dummyjson.com/products/${id}`)
 
             const deletedProduct = response.data
 
@@ -82,14 +68,29 @@ const ProductProvider = ({children}) => {
                 setProducts((prev) => prev.filter((product) => product.id !== deletedProduct.id))
             }
         } catch (error) {
-            console.log(error);
-        } finally{
-            setLoading(false)
+            console.error('DeleteProduct error', error.message);
         }
     }
 
   return (
-    <ProductContext.Provider value={{addProduct, editProduct, deleteProduct, setDeleteId, setEditing, loading, products, deleteId, editing}}>{children}</ProductContext.Provider>
+    <ProductContext.Provider value={{
+        // data
+        products,
+        loading,
+        error,
+        refetch,
+
+        // confirmation dialog
+        deleteId,
+        confirmOpen,
+        setDeleteId,
+        cancelConfirm,
+
+        // Operations
+        addProduct,
+        editProduct,
+        deleteProduct
+    }}>{children}</ProductContext.Provider>
   )
 }
 
